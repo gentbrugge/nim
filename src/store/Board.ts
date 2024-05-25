@@ -6,12 +6,14 @@ interface State {
   columnValues: number[];
   activeColumn?: number;
   player: number;
+  computerMove?: boolean;
   gameOver?: boolean;
 }
 
 interface Action {
-  type: 'remove' | 'next' | 'reset' | 'highlight';
+  type: 'remove' | 'next' | 'reset' | 'highlight' | 'computer';
   column?: number;
+  state?: State;
 }
 
 function getBestMove (columns: number[]): [number, number] {
@@ -71,7 +73,7 @@ function getRandomColumns (columnCount: number, maxHeight: number) {
   }
 
   columns.sort();
-  
+
   return columns;
 }
 
@@ -154,24 +156,26 @@ function reduce(state: State, action: Action): State {
       return {
         ...state,
         activeColumn: undefined,
-        player: (player + 1) % 2
+        player: (player + 1) % 2,
+        computerMove: false
       }
     }
     case 'reset': {
-      const { columnValues: columns, rows: maxHeight } = state;
+      const { state } = action;
 
-      return {
-        ...state,
-        columnValues: getRandomColumns(state.columnValues.length, maxHeight),
-        gameOver: undefined,
-        activeColumn: undefined
-      };
+      return state!;
     }
     case 'highlight': {
       const column = action.column;
       return {
         ...state,
         activeColumn: column
+      }
+    }
+    case 'computer': {
+      return {
+        ...state,
+        computerMove: true
       }
     }
   }
@@ -188,12 +192,15 @@ async function sleep(ms: number) {
 
 class Controller {
   private dispatch: React.Dispatch<Action>;
+  private initialState: State;
 
-  constructor (dispatch: React.Dispatch<Action>) {
+  constructor (dispatch: React.Dispatch<Action>, initialState: State) {
     this.dispatch = dispatch;
+    this.initialState = initialState;
 
     this.remove = this.remove.bind(this);
     this.next = this.next.bind(this);
+    this.reset = this.reset.bind(this);
   }
 
   public remove (column: number) {
@@ -213,6 +220,10 @@ class Controller {
     const [columnIndex, take] = getBestMove(board.columnValues);
 
     this.next();
+
+    this.dispatch({
+      type: 'computer'
+    });
 
     for (let index = 0; index < (board.columnValues.length * 2 + columnIndex); ++index) {
       let highlight = index % (2 * board.columnValues.length);
@@ -242,7 +253,8 @@ class Controller {
 
   public reset () {
     this.dispatch({
-      type: 'reset'
+      type: 'reset',
+      state: this.initialState
     });
   }
 }
@@ -270,10 +282,11 @@ function useBoard (): [State, Controller] {
   const maxHeight = Math.min(rows, parseInt(searchParams.get('maxheight'), rows));
   const intitialBoard = searchParams.get('board');
 
-  const [board, dispatch] = useReducer(reduce, getInitialState(rows, columns, maxHeight, intitialBoard));
+  const initialState = getInitialState(rows, columns, maxHeight, intitialBoard);
+  const [board, dispatch] = useReducer(reduce, initialState);
 
   const controller = useMemo(() => {
-    return new Controller(dispatch);
+    return new Controller(dispatch, initialState);
   }, []);
 
   return [board, controller];
