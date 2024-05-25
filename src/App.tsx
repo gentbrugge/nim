@@ -10,7 +10,7 @@ function App() {
     lights.push(i);
   }
 
-  const player = board.player == 0 ? 'Koen' : 'Tijs';
+  const player = board.player == 0 ? 'Player' : 'Computer';
   const showWinner = board.gameOver;
   const nextDisabled = board.activeColumn == null;
 
@@ -39,13 +39,13 @@ function App() {
                         return <Light key={lightIndex} on={on}></Light>
                       })
                     }
-                    <button onClick={() => controller.remove(columnIndex)} style={{width: '8px', height: '14px', background: removeDisabled ? 'grey' : 'orange'}}/>
+                    <button onClick={() => controller.remove(columnIndex)} style={{width: '8px', height: '14px', alignSelf: 'center', background: removeDisabled ? 'grey' : 'orange'}}/>
                   </div>
                 )
               })
             }
           </div>
-          <button onClick={() => showWinner ? controller.reset() : controller.next()} style={{width: '8px', height: '14px', background: nextDisabled ? 'grey' : 'blue', alignSelf: 'center'}}/>
+          <button onClick={() => showWinner ? controller.reset() : controller.computer(board)} style={{width: '8px', height: '14px', background: nextDisabled ? 'grey' : 'blue', alignSelf: 'center'}}/>
         </div>
       </header>
     </div>

@@ -9,8 +9,58 @@ interface State {
 }
 
 interface Action {
-  type: 'remove' | 'next' | 'reset';
+  type: 'remove' | 'next' | 'reset' | 'highlight';
   column?: number;
+}
+
+function getBestMove (columns: number[]): [number, number] {
+  const freeMoves = columns.reduce((result, value) => {
+    if (value > 1) {
+      return result + 1;
+    }
+    return result;
+  }, 0);
+
+  if (freeMoves < 2) {
+    const nonEmptyColumns = columns.reduce((result, value) => {
+      if (value > 0) {
+        return result + 1;
+      }
+      return result;
+    }, 0);
+
+    let max = columns.reduce((max, value) => {
+      return Math.max(max, value);
+    });
+
+    const columnIndex = columns.findIndex((value) => value === max);
+
+    if (nonEmptyColumns % 2 === 0) {
+      // take all
+      return [columnIndex, columns[columnIndex]];
+    } else {
+      // leave one
+      return [columnIndex, columns[columnIndex] - 1];
+    }
+  }
+
+  const nimSum = columns.reduce((nimSum, value) => nimSum ^ value);
+
+  let columnIndex = columns.findIndex((value) => {
+    return (value ^ nimSum) < value;
+  });
+
+  let take = 0;
+  if (columnIndex !== -1) {
+    take = columns[columnIndex] - (columns[columnIndex] ^ nimSum);
+  }
+
+  if (take === 0) {
+    columnIndex = columns.findIndex((value) => value > 0);
+    take = 1;
+  }
+
+  return [columnIndex, take];
 }
 
 function getRandomColumns (columnCount: number, maxHeight: number) {
@@ -22,11 +72,10 @@ function getRandomColumns (columnCount: number, maxHeight: number) {
   return columns;
 }
 
-
 function getInitialState(): State {
   return {
-    maxHeight: 8,
-    columns: getRandomColumns(4, 7),
+    maxHeight: 16,
+    columns: getRandomColumns(32, 16),
     player: 0  
   }
 };
@@ -94,7 +143,23 @@ function reduce(state: State, action: Action): State {
         activeColumn: undefined
       };
     }
+    case 'highlight': {
+      const column = action.column;
+      return {
+        ...state,
+        activeColumn: column
+      }
+    }
   }
+}
+
+async function sleep(ms: number) {
+  const promise = new Promise((resolve) => {
+    const timeout = setTimeout(() => {resolve(null)}, ms);
+
+  });
+
+  return promise;
 }
 
 class Controller {
@@ -118,6 +183,37 @@ class Controller {
     this.dispatch({
       type: 'next'
     });
+  }
+
+  public async computer (board: State) {
+    const [columnIndex, take] = getBestMove(board.columns);
+
+    this.next();
+
+    for (let index = 0; index < (board.columns.length * 2 + columnIndex); ++index) {
+      let highlight = index % (2 * board.columns.length);
+      if (highlight >= board.columns.length) {
+        highlight = 2 * board.columns.length - highlight - 1;
+      }
+      this.dispatch({
+        type: 'highlight',
+        column: highlight
+      });
+      await sleep(50);
+    }
+
+    this.dispatch({
+      type: 'highlight',
+      column: columnIndex
+    });
+
+    await sleep(1500);
+
+    for (let index = 0; index < take; ++index) {
+      this.remove(columnIndex);
+      await sleep(600);
+    }
+    this.next();
   }
 
   public reset () {
