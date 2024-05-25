@@ -6,7 +6,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<NimPage/>}/>
+        <Route path="/nim" element={<NimPage/>}/>
       </Routes>
     </BrowserRouter>
   );

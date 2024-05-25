@@ -1,6 +1,8 @@
 import { useSearchParams } from 'react-router-dom';
 import { useBoard } from '../store/Board';
 import Light from './Light';
+import RemoveButton from './RemoveButton';
+import NextButton from './NextButton';
 
 function NimPage () {
   const [board, controller] = useBoard();
@@ -46,21 +48,23 @@ function NimPage () {
                 const removeDisabled = board.activeColumn != null && board.activeColumn != columnIndex;
 
                 return (
-                  <div key={columnIndex} style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                    {
-                      rowIndices.map((rowIndex) => {
-                        const on = rowIndex < rowValue;
+                  <div key={columnIndex} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px'}}>
+                    <div key={columnIndex} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
+                      {
+                        rowIndices.map((rowIndex) => {
+                          const on = rowIndex < rowValue;
 
-                        return <Light key={rowIndex} on={on}></Light>
-                      })
-                    }
-                    <button onClick={() => board.computerMove ? undefined : controller.remove(columnIndex)} style={{width: '8px', height: '14px', alignSelf: 'center', background: removeDisabled ? 'grey' : 'orange'}}/>
+                          return <Light key={rowIndex} on={on}></Light>
+                        })
+                      }
+                    </div>
+                    <RemoveButton active={!removeDisabled} onClick={() => board.computerMove ? undefined : controller.remove(columnIndex)} />
                   </div>
                 )
               })
             }
           </div>
-          <button onClick={handleNext} style={{width: '8px', height: '14px', background: nextDisabled ? 'grey' : 'blue'}}/>
+          <NextButton active={!nextDisabled} onClick={handleNext} />
         </div>
         {showWinner &&
         <div
@@ -75,6 +79,7 @@ function NimPage () {
             width: '100%',
             height: '100%',
             background: '#55000055',
+            WebkitBackdropFilter: 'blur(5px)',
             backdropFilter: 'blur(5px)'
           }}
         >
