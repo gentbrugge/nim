@@ -1,8 +1,9 @@
 import { useMemo, useReducer } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 interface State {
-  maxHeight: number;
-  columns: number[];
+  rows: number;
+  columnValues: number[];
   activeColumn?: number;
   player: number;
   gameOver?: boolean;
@@ -66,16 +67,39 @@ function getBestMove (columns: number[]): [number, number] {
 function getRandomColumns (columnCount: number, maxHeight: number) {
   let columns: number[] = [];
   for (let index = 0; index < columnCount; ++index) {
-    columns[index] = Math.floor(Math.random() * (maxHeight + 1));
+    columns[index] = Math.floor(Math.random() * (maxHeight)) + 1;
   }
 
+  columns.sort();
+  
   return columns;
 }
 
-function getInitialState(): State {
+function getInitialState(rows: number, columns: number, maxHeight: number, initialBoard: string | null): State {
+  let defaultBoard: number[] | null = null;
+  let minRows = rows;
+  if (initialBoard != null) {
+    const parts = initialBoard.split(' ');
+
+    let board: number[] = [];
+    try {
+      for (const part of parts) {
+        const value = Number.parseInt(part);
+        board.push(value);
+
+        minRows = Math.max(value, minRows);
+      }
+    }
+    catch (reason) {
+      // ignore
+    }
+
+    defaultBoard = board;
+  }
+
   return {
-    maxHeight: 16,
-    columns: getRandomColumns(32, 16),
+    rows: minRows,
+    columnValues: defaultBoard != null ? defaultBoard : getRandomColumns(columns, maxHeight),
     player: 0  
   }
 };
@@ -91,7 +115,7 @@ function isGameOver (columns: number[]) {
 function reduce(state: State, action: Action): State {
   switch (action.type) {
     case 'remove': {
-      const { columns, activeColumn, gameOver } = state;
+      const { columnValues: columns, activeColumn, gameOver } = state;
       const column = action.column!;
 
       if (gameOver) {
@@ -108,7 +132,7 @@ function reduce(state: State, action: Action): State {
 
         return {
           ...state,
-          columns: newColumns,
+          columnValues: newColumns,
           activeColumn: column,
           gameOver: isGameOver(newColumns)
         }
@@ -134,11 +158,11 @@ function reduce(state: State, action: Action): State {
       }
     }
     case 'reset': {
-      const { columns, maxHeight } = state;
+      const { columnValues: columns, rows: maxHeight } = state;
 
       return {
         ...state,
-        columns: getRandomColumns(state.columns.length, maxHeight),
+        columnValues: getRandomColumns(state.columnValues.length, maxHeight),
         gameOver: undefined,
         activeColumn: undefined
       };
@@ -186,14 +210,14 @@ class Controller {
   }
 
   public async computer (board: State) {
-    const [columnIndex, take] = getBestMove(board.columns);
+    const [columnIndex, take] = getBestMove(board.columnValues);
 
     this.next();
 
-    for (let index = 0; index < (board.columns.length * 2 + columnIndex); ++index) {
-      let highlight = index % (2 * board.columns.length);
-      if (highlight >= board.columns.length) {
-        highlight = 2 * board.columns.length - highlight - 1;
+    for (let index = 0; index < (board.columnValues.length * 2 + columnIndex); ++index) {
+      let highlight = index % (2 * board.columnValues.length);
+      if (highlight >= board.columnValues.length) {
+        highlight = 2 * board.columnValues.length - highlight - 1;
       }
       this.dispatch({
         type: 'highlight',
@@ -223,8 +247,30 @@ class Controller {
   }
 }
 
+function parseInt(value: string | null, defaultValue: number): number {
+  if (value == null) {
+    return defaultValue;
+  }
+
+  try {
+    const val = Number.parseInt(value);
+    return val;
+  }
+  catch (reason) {
+    // ignore
+  }
+
+  return defaultValue;
+}
+
 function useBoard (): [State, Controller] {
-  const [board, dispatch] = useReducer(reduce, getInitialState());
+  const [searchParams] = useSearchParams();
+  const rows = parseInt(searchParams.get('rows'), 7);
+  const columns = parseInt(searchParams.get('columns'), 4);
+  const maxHeight = Math.min(rows, parseInt(searchParams.get('maxheight'), rows));
+  const intitialBoard = searchParams.get('board');
+
+  const [board, dispatch] = useReducer(reduce, getInitialState(rows, columns, maxHeight, intitialBoard));
 
   const controller = useMemo(() => {
     return new Controller(dispatch);
