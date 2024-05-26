@@ -16,6 +16,11 @@ interface Action {
   state?: State;
 }
 
+function getNimSum (columns: number[]) {
+  const nimSum = columns.reduce((nimSum, value) => nimSum ^ value);
+  return nimSum;
+}
+
 function getBestMove (columns: number[]): [number, number] {
   const freeMoves = columns.reduce((result, value) => {
     if (value > 1) {
@@ -47,7 +52,7 @@ function getBestMove (columns: number[]): [number, number] {
     }
   }
 
-  const nimSum = columns.reduce((nimSum, value) => nimSum ^ value);
+  const nimSum = getNimSum(columns);
 
   let columnIndex = columns.findIndex((value) => {
     return (value ^ nimSum) < value;
@@ -73,6 +78,13 @@ function getRandomColumns (columnCount: number, maxHeight: number) {
   }
 
   columns.sort();
+
+  // Make sure the random board can be won by the first player.
+  if (getNimSum(columns) === 0) {
+    columns[columns.length - 1] -= 1;
+
+    columns.sort();
+  }
 
   return columns;
 }
